@@ -76,4 +76,40 @@ df1[, covid_job_search_impact := as.numeric(covid_job_search_impact)]
 
 df1[, unique(permission)]
 
-fwrite(x = df1, file = '../data/clean/data_merged.csv')
+
+mask <- df1[, summarize_all(.SD, is.numeric)]
+mask <- t(mask)[, 1] 
+c <- names(mask[mask])
+
+df2 <- copy(df1)
+
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 99999999, NA, x)), .SDcols=c]
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 9999999, NA, x)), .SDcols=c]
+
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 999999, NA, x)), .SDcols=c]
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 99999, NA, x)), .SDcols=c]
+
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 9999, NA, x)), .SDcols=c]
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 999, NA, x)), .SDcols=c]
+df2[, (c) := lapply(.SD, function(x) ifelse(x == 99, NA, x)), .SDcols=c]
+
+df2%>%summary
+df2[n_offers_research > 30, n_offers_research := NA]
+
+df2[, unique(ethnicity)]%>%sort()
+
+fwrite(x = df2, file = '../data/clean/data_merged.csv')
+glimpse(df1)
+
+df2[, max(n_apply_tenure, na.rm=T)]
+
+ggplot(df2[], aes(n_apply_tenure, n_interview_research_final)) + 
+    geom_jitter() + 
+    geom_smooth(formula = y ~ x, method = 'lm')
+
+ggplot(df2[], aes(n_apply_tenure, n_offers_research)) + 
+    geom_jitter() + 
+    geom_smooth(formula = y ~ x, method = 'lm')
+
+
+df2[n_offers_research == 8, ]%>%View
