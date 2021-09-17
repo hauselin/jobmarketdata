@@ -51,6 +51,7 @@ c = (
     .mark_circle(size=34)
     .encode(x=xcol, y=ycol, tooltip=[xcol, ycol])
     .interactive()
+    .properties(height=610)
 )
 
 st.altair_chart(c, use_container_width=True)
