@@ -32,20 +32,17 @@ import altair as alt
 
 # %%
 
-st.write("hello")
-
-# %%
-
-df = pd.read_csv("data/clean/data_merged.csv")
+df = pd.read_csv(st.secrets["data"])
 df = df.drop(columns=["date"])
-st.write(df)
+# st.write(df)
 
 cols = df.columns
-xcol = st.selectbox("x-axis", cols, index=10, help="Variable to plot on the x-axis")
-ycol = st.selectbox("y-axis", cols, index=11)
+xcol = st.sidebar.selectbox(
+    "x-axis", cols, index=10, help="Variable to plot on the x-axis"
+)
+ycol = st.sidebar.selectbox("y-axis", cols, index=11)
 
-st.write("You selected ", xcol, " and ", ycol)
-
+# st.write("You selected ", xcol, " and ", ycol)
 
 # %%
 
@@ -55,6 +52,5 @@ c = (
     .encode(x=xcol, y=ycol, tooltip=[xcol, ycol])
     .interactive()
 )
-
 
 st.altair_chart(c, use_container_width=True)
