@@ -36,7 +36,7 @@ st.write("hello")
 
 # %%
 
-df = pd.read_csv("../data/clean/data_merged.csv")
+df = pd.read_csv("data/clean/data_merged.csv")
 df = df.drop(columns=["date"])
 st.write(df)
 
