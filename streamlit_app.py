@@ -72,8 +72,6 @@ else:
     except:
         default_x = cols.index("years_postdoc")
         default_y = cols.index("n_offers_research")
-        default_x = cols.index("n_interview_teaching_final")
-        default_y = cols.index("n_offers_research")
         st.session_state["default_y"] = default_y
         st.session_state["default_x"] = default_x
 
