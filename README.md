@@ -1,6 +1,6 @@
 # Job market data
 
-[![Streamlit App](https://share.streamlit.io/hauselin/jobmarketdata/main)](https://share.streamlit.io/hauselin/stats-app/main)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/hauselin/jobmarketdata/main)
 
 Data collected by Gordon Pennycook and Samuel Merh.
 
