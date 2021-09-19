@@ -37,8 +37,16 @@ np.set_printoptions(
     formatter=None,
 )
 
-
 # %%
+
+st.set_page_config(
+    page_title="Academic job market",
+    layout="centered",
+    initial_sidebar_state="expanded",
+    page_icon="random",
+)
+
+# %% prepare data
 
 df = pd.read_csv(st.secrets["data"])
 df = df.drop(columns=["date", "permission"])
@@ -63,7 +71,7 @@ else:
     default_y = cols.index("n_offers_research")
 
 
-# %%
+# %% sidebar
 
 xcol = st.sidebar.selectbox("x-axis variable", colnames, index=default_x)
 xcol = list(keys.keys())[list(keys.values()).index(xcol)]
@@ -127,7 +135,7 @@ if isinstance(cor["BF10"][0], str):
 if cor["p-val"][0] < 0.001:
     cor["p-val"] = "< 0.001"
 
-# %% figures
+# %% plot
 
 brush = alt.selection_interval()
 
@@ -201,12 +209,12 @@ fig2 = (
     .configure_legend(titleFontSize=13, labelFontSize=13)
 )
 
+# %% show plot and stuff
+
 _, col2, _ = st.columns((0.15, 0.8, 0.1))
 with col2:
     st.altair_chart(fig2, use_container_width=True)
 
-
 st.table(cor)
-
 
 # %%
