@@ -1,5 +1,5 @@
 rm(list = ls())
-library(data.table); library(tidyverse)
+library(data.table); library(tidyverse); library(modelsummary)
 
 d0 <- fread("../data/clean/data_merged.csv")
 d0
@@ -70,5 +70,18 @@ d0[permission != "Yes", permission := "No"]
 d0[, sort(unique(funding))]
 d0[funding == 99999999999, funding := NA]
 d0[funding > 5000000, funding := NA]
+
+# h-index
+d0[, sort(unique(h_index))]
+d0[h_index == 999999999, h_index := NA]
+
+d0[, citations_total := as.numeric(citations_total)]
+d0[, citations_year := as.numeric(citations_year)]
+d0[citations_total == 99999999999, citations_total := NA]
+d0[citations_year == 9999999999999, citations_year := NA]
+d0[citations_year == 19500, citations_year := NA]
+
+
+datasummary_skim(d0)
 
 fwrite(d0, "../data/clean/data_cleaned.csv")
