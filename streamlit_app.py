@@ -45,7 +45,7 @@ def deviate(x):
     return (x - np.nanmedian(x)) / mad(x)
 
 
-def na_outliers(x, threshold=3.0):
+def na_outliers(x, threshold=5.0):
     mask = np.abs(deviate(x)) > threshold
     x_clean = x.copy()
     x_clean[mask] = np.nan
@@ -61,29 +61,39 @@ df = df.drop(columns=["date"])
 cols = df.columns
 
 xcol = st.sidebar.selectbox("x-axis variable", cols, index=9)
-remove_outliers_x = st.sidebar.checkbox(f"Exclude outliers: {xcol}", value=True)
+remove_outliers_x = st.sidebar.checkbox(f"Exclude outliers", value=False, key="xcol")
 if remove_outliers_x:
-    df[xcol] = na_outliers(df[xcol], 5)
+    df[xcol] = na_outliers(df[xcol])
 
 xmin, xmax = st.sidebar.select_slider(
     f"{xcol} range",
     options=range(int(np.floor(df[xcol].min())), int(df[xcol].max() + 1)),
     value=(df[xcol].min(), df[xcol].max()),
+    key="xcol_slider",
 )
 df = df.loc[df[xcol] <= xmax].loc[df[xcol] >= xmin].reset_index(drop=True)
 
+st.sidebar.markdown("### ")
 
-ycol = st.sidebar.selectbox("y-axis variable", cols, index=13)
-remove_outliers_y = st.sidebar.checkbox(f"Exclude outliers: {ycol}", value=True)
+ycol = st.sidebar.selectbox("y-axis variable", cols, index=21)
+remove_outliers_y = st.sidebar.checkbox(f"Exclude outliers", value=False, key="ycol")
 if remove_outliers_y:
-    df[ycol] = na_outliers(df[ycol], 5)
+    df[ycol] = na_outliers(df[ycol])
 
 ymin, ymax = st.sidebar.select_slider(
     f"{ycol} range",
     options=range(int(np.floor(df[ycol].min())), int(df[ycol].max() + 1)),
     value=(df[ycol].min(), df[ycol].max()),
+    key="ycol_slider",
 )
 df = df.loc[df[ycol] <= ymax].loc[df[ycol] >= ymin].reset_index(drop=True)
+
+if xcol == ycol:
+    st.warning("Select different x and y variables.")
+    st.stop()
+
+
+st.sidebar.markdown("## ")
 
 dfclean = df[[ycol, xcol]].dropna()
 n = dfclean.shape[0]
@@ -110,11 +120,16 @@ r2 = r2.set_index("degree")
 
 brush = alt.selection_interval()
 
+df = df[[ycol, xcol, "gender"]].dropna()
+
+rge = [df[xcol].min(), df[xcol].max()]
+tick_axis = alt.Axis(labels=False, domain=False, ticks=False)
+
 base = (
     alt.Chart(df)
     .mark_circle(color="black")
     .encode(
-        alt.X(xcol),
+        alt.X(xcol, scale=alt.Scale(domain=rge)),
         alt.Y(ycol),
         tooltip=[xcol, ycol],
         # color=alt.condition(brush, "gender:N", alt.value("lightgray")),
@@ -123,27 +138,68 @@ base = (
     .properties(title=f"R²: {scores[-1] *100:.2f}%")
 )
 
-tick_axis = alt.Axis(labels=False, domain=False, ticks=False)
-
-x_ticks = (
-    base.mark_tick()
-    .encode(
-        alt.X(xcol, title="", axis=tick_axis),
-        alt.Y("gender", title="", axis=tick_axis),
-        color="gender:N",
-    )
-    .properties(title="")
-)
+# x_ticks = (
+#     base.mark_tick()
+#     .encode(
+#         alt.X(xcol, title="", axis=tick_axis, scale=alt.Scale(domain=rge)),
+#         alt.Y("gender", title="", axis=tick_axis),
+#         color="gender:N",
+#     )
+#     .properties(title="")
+# )
 
 y_ticks = (
-    base.mark_tick()
+    base.mark_tick(size=8, opacity=0.5)
     .encode(
         alt.X("gender", title="", axis=tick_axis),
         alt.Y(ycol, title="", axis=tick_axis),
         color="gender:N",
     )
-    .properties(height=377, title="")
+    .properties(height=377, width=34, title="")
 )
+
+x_ticks = (
+    alt.Chart(df)
+    .transform_fold([xcol], as_=["", "value"])
+    .transform_density(
+        density="value",
+        bandwidth=0.3,
+        groupby=["gender"],
+        extent=rge,
+        counts=True,
+        steps=34,
+    )
+    .mark_area(opacity=0.8)
+    .encode(
+        alt.X("value:Q", title="", scale=alt.Scale(domain=rge)),
+        alt.Y("density:Q", stack="zero", axis=tick_axis, title=""),
+        alt.Color("gender:N"),
+    )
+    .properties(width=400, height=55)
+)
+
+# y_ticks = (
+#     alt.Chart(df)
+#     .transform_fold([ycol], as_=["", "value"])
+#     .transform_density(
+#         density="value",
+#         bandwidth=0.3,
+#         groupby=["gender"],
+#         extent=[0, 8],
+#         counts=True,
+#         steps=89,
+#     )
+#     .mark_area()
+#     .encode(
+#         alt.X("value:Q", axis=tick_axis, title=""),
+#         # alt.X("density:Q", stack="zero", axis=tick_axis, title=""),
+#         alt.Y("density:Q", stack="zero", axis=tick_axis, title=""),
+#         # alt.Y("value:Q", axis=tick_axis, title=""),
+#         alt.Color("gender:N"),
+#     )
+#     .properties(width=255, height=377)
+# )
+
 
 polynomial_fit = [
     base.transform_regression(
@@ -151,21 +207,35 @@ polynomial_fit = [
     )
     .mark_line()
     .transform_fold([str(order)], as_=["degree", ycol])
+    .encode()
 ]
 
-fig1 = alt.layer(base, *polynomial_fit)
+reg = (
+    alt.Chart(df)
+    .mark_point()
+    .encode(x=xcol, y=ycol)
+    .transform_regression(xcol, ycol, method="poly", order=order)
+    .mark_line(color="black", size=2)
+)
+
+# fig1 = alt.layer(base, *polynomial_fit)
+fig1 = reg + base
 # fig1 = fig1.properties(height=610).interactive().add_selection(brush)
 fig1 = fig1.properties(height=377).interactive()
 # fig2 = fig1 & bars
 
-fig2 = y_ticks | (fig1 & x_ticks)
+# fig2 = yticks | (fig1 & x_ticks)
+fig2 = fig1 & x_ticks
 fig2 = (
     fig2.configure_axis(labelFontSize=11, titleFontSize=15)
     .configure_title(fontSize=15)
     .configure_legend(titleFontSize=13, labelFontSize=13)
 )
 
-st.altair_chart(fig2, use_container_width=True)
+
+_, col2, _ = st.columns((0.1, 0.8, 0.1))
+with col2:
+    st.altair_chart(fig2, use_container_width=True)
 
 
 cor = pg.corr(df[xcol], df[ycol])
