@@ -2,7 +2,7 @@
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/hauselin/jobmarketdata/main)
 
-Data collected by Gordon Pennycook and Samuel Merh.
+Data collected by Gordon Pennycook and Samuel Mehr.
 
 App made by Hause Lin.
 
