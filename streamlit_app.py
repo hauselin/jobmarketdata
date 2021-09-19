@@ -3,7 +3,10 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from sklearn.neighbors import LocalOutlierFactor
+import pingouin as pg
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LinearRegression
 
 # from pyod.models.mad import MAD
 
@@ -40,9 +43,11 @@ df = df.drop(columns=["date"])
 # st.write(df)
 
 cols = df.columns
+
 xcol = st.sidebar.selectbox(
-    "x-axis", cols, index=0, help="Variable to plot on the x-axis"
+    "x-axis", cols, index=9, help="Variable to plot on the x-axis"
 )
+
 ycol = st.sidebar.selectbox("y-axis", cols, index=13)
 
 remove_outliers = st.sidebar.radio(f"Remove outliers: {ycol}", ["Yes", "No"])
@@ -73,16 +78,74 @@ if remove_outliers == "Yes":
     df[ycol] = na_outliers(df[ycol], 5)
 
 
-# st.write("You selected ", xcol, " and ", ycol)
+xmin, xmax = st.sidebar.select_slider(
+    f"{xcol} range",
+    options=range(int(np.floor(df[ycol].min())), int(df[xcol].max() + 1)),
+    value=(df[xcol].min(), df[xcol].max()),
+)
+xmin = np.float_(xmin)
+xmax = np.float_(xmax)
+df = df.loc[df[xcol] <= xmax].loc[df[xcol] >= xmin].reset_index(drop=True)
+
+ymin, ymax = st.sidebar.select_slider(
+    f"{ycol} range",
+    options=range(int(np.floor(df[ycol].min())), int(df[ycol].max() + 1)),
+    value=(df[ycol].min(), df[ycol].max()),
+)
+ymin = np.float_(ymin)
+ymax = np.float_(ymax)
+df = df.loc[df[ycol] <= ymax].loc[df[ycol] >= ymin].reset_index(drop=True)
+
+dfclean = df[[ycol, xcol]].dropna()
+n = dfclean.shape[0]
+order = st.sidebar.slider("Polynomial order", min_value=1, max_value=10, value=1)
 
 # %%
 
-c = (
+cor = pg.corr(df[xcol], df[ycol])
+if isinstance(cor["BF10"][0], str):
+    cor["BF10"] = "> 1000"
+if cor["p-val"][0] < 0.001:
+    cor["p-val"] = "< 0.001"
+
+st.table(cor)
+
+# %%
+
+base = (
     alt.Chart(df)
-    .mark_circle(size=34)
-    .encode(x=xcol, y=ycol, tooltip=[xcol, ycol])
-    .interactive()
-    .properties(height=610)
+    .mark_circle(color="black")
+    .encode(alt.X(xcol), alt.Y(ycol), tooltip=[xcol, ycol])
 )
 
-st.altair_chart(c, use_container_width=True)
+polynomial_fit = [
+    base.transform_regression(
+        xcol, ycol, method="poly", order=order, as_=[xcol, str(order)]
+    )
+    .mark_line()
+    .transform_fold([str(order)], as_=["degree", ycol])
+]
+
+fig1 = alt.layer(base, *polynomial_fit)
+fig1 = fig1.properties(height=610).interactive()
+st.altair_chart(fig1, use_container_width=True)
+
+
+# %%
+
+
+# %%
+
+scores = []
+degrees = []
+for o in range(1, order + 1):
+    degrees.append(o)
+    poly = PolynomialFeatures(degree=o)
+    pipeline = make_pipeline(poly, LinearRegression())
+    pipeline.fit(dfclean[[xcol]], dfclean[ycol])
+    scores.append(pipeline.score(dfclean[[xcol]], df[ycol]))
+
+
+r2 = pd.DataFrame({"degree": degrees, "R2": scores})
+r2 = r2.set_index("degree")
+st.table(r2)
