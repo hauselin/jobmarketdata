@@ -1,14 +1,18 @@
 # %% load modules
 
 from pathlib import Path
+
+import altair as alt
 import numpy as np
 import pandas as pd
 import pingouin as pg
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
+import streamlit as st
 from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
 
-# from pyod.models.mad import MAD
+import utils
+from utils import keys
 
 pd.set_option(
     "display.max_rows",
@@ -33,57 +37,64 @@ np.set_printoptions(
     formatter=None,
 )
 
-import streamlit as st
-import altair as alt
-
-# %%
-def mad(x):
-    return np.nanmedian(abs(x - np.nanmedian(x))) * 1.4826
-
-
-def deviate(x):
-    return (x - np.nanmedian(x)) / mad(x)
-
-
-def na_outliers(x, threshold=5.0):
-    mask = np.abs(deviate(x)) > threshold
-    x_clean = x.copy()
-    x_clean[mask] = np.nan
-    return x_clean
-
 
 # %%
 
 df = pd.read_csv(st.secrets["data"])
-df = df.drop(columns=["date"])
-# st.write(df)
+df = df.drop(columns=["date", "permission"])
 
-cols = df.columns
+cols = list(keys.keys())
+colnames = keys.values()
 
-xcol = st.sidebar.selectbox("x-axis variable", cols, index=9)
+# lucky = st.sidebar.button(f"I'm feeling lucky", key="lucky")
+lucky = False
+
+if lucky:
+    cols2 = cols[:28]
+    default_x = np.random.choice(cols2)
+    cols2.remove(default_x)
+    default_x = cols.index(default_x)
+    default_y = np.random.choice(cols2)
+    default_y = cols.index(default_y)
+    st.session_state["default_y"] = default_y
+    st.session_state["default_x"] = default_x
+else:
+    default_x = cols.index("years_postdoc")
+    default_y = cols.index("n_offers_research")
+
+
+# %%
+
+xcol = st.sidebar.selectbox("x-axis variable", colnames, index=default_x)
+xcol = list(keys.keys())[list(keys.values()).index(xcol)]
 remove_outliers_x = st.sidebar.checkbox(f"Exclude outliers", value=False, key="xcol")
 if remove_outliers_x:
-    df[xcol] = na_outliers(df[xcol])
+    df[xcol] = utils.na_outliers(df[xcol])
+if xcol == "funding":
+    df[xcol] = np.log10(df[xcol] + 1)
 
 xmin, xmax = st.sidebar.select_slider(
-    f"{xcol} range",
+    f"Range",
     options=range(int(np.floor(df[xcol].min())), int(df[xcol].max() + 1)),
-    value=(df[xcol].min(), df[xcol].max()),
+    value=(int(df[xcol].min()), int(df[xcol].max())),
     key="xcol_slider",
 )
 df = df.loc[df[xcol] <= xmax].loc[df[xcol] >= xmin].reset_index(drop=True)
 
 st.sidebar.markdown("### ")
 
-ycol = st.sidebar.selectbox("y-axis variable", cols, index=21)
+ycol = st.sidebar.selectbox("y-axis variable", colnames, index=default_y)
+ycol = list(keys.keys())[list(keys.values()).index(ycol)]
 remove_outliers_y = st.sidebar.checkbox(f"Exclude outliers", value=False, key="ycol")
 if remove_outliers_y:
-    df[ycol] = na_outliers(df[ycol])
+    df[ycol] = utils.na_outliers(df[ycol])
+if ycol == "funding":
+    df[ycol] = np.log10(df[ycol] + 1)
 
 ymin, ymax = st.sidebar.select_slider(
-    f"{ycol} range",
+    f"Range",
     options=range(int(np.floor(df[ycol].min())), int(df[ycol].max() + 1)),
-    value=(df[ycol].min(), df[ycol].max()),
+    value=(int(df[ycol].min()), int(df[ycol].max())),
     key="ycol_slider",
 )
 df = df.loc[df[ycol] <= ymax].loc[df[ycol] >= ymin].reset_index(drop=True)
@@ -98,67 +109,52 @@ st.sidebar.markdown("## ")
 dfclean = df[[ycol, xcol]].dropna()
 n = dfclean.shape[0]
 order = st.sidebar.slider(
-    "Regression polynomial order", min_value=1, max_value=10, value=1
+    "Regression polynomial order", min_value=1, max_value=15, value=1
 )
 
-# %%
+# %% regress and correlate
 
 scores = []
-degrees = []
-for o in range(1, order + 1):
-    degrees.append(o)
-    poly = PolynomialFeatures(degree=o)
-    pipeline = make_pipeline(poly, LinearRegression())
-    pipeline.fit(dfclean[[xcol]], dfclean[ycol])
-    scores.append(pipeline.score(dfclean[[xcol]], df[ycol]))
+degrees = [order]
+poly = PolynomialFeatures(degree=order)
+pipeline = make_pipeline(poly, LinearRegression())
+pipeline.fit(dfclean[[xcol]], dfclean[ycol])
+scores.append(pipeline.score(dfclean[[xcol]], df[ycol]))
 
+cor = pg.corr(df[xcol], df[ycol])
+if isinstance(cor["BF10"][0], str):
+    cor["BF10"] = "> 1000"
+if cor["p-val"][0] < 0.001:
+    cor["p-val"] = "< 0.001"
 
-r2 = pd.DataFrame({"degree": degrees, "R2": scores})
-r2 = r2.set_index("degree")
-
-# %%
+# %% figures
 
 brush = alt.selection_interval()
 
 df = df[[ycol, xcol, "gender"]].dropna()
+if ycol == "funding":
+    df[ycol] = 10 ** df[ycol] - 1
+if xcol == "funding":
+    df[xcol] = 10 ** df[xcol] - 1
 
 rge = [df[xcol].min(), df[xcol].max()]
 tick_axis = alt.Axis(labels=False, domain=False, ticks=False)
 
 base = (
     alt.Chart(df)
-    .mark_circle(color="black")
+    .mark_circle(size=55)
     .encode(
-        alt.X(xcol, scale=alt.Scale(domain=rge)),
-        alt.Y(ycol),
+        alt.X(xcol, scale=alt.Scale(domain=rge), title=keys[xcol]),
+        alt.Y(ycol, title=keys[ycol]),
         tooltip=[xcol, ycol],
-        # color=alt.condition(brush, "gender:N", alt.value("lightgray")),
-        color="gender:N",
+        color=alt.Color(
+            "gender:N", title=keys["gender"], scale=alt.Scale(scheme="inferno")
+        ),
     )
     .properties(title=f"R²: {scores[-1] *100:.2f}%")
 )
 
-# x_ticks = (
-#     base.mark_tick()
-#     .encode(
-#         alt.X(xcol, title="", axis=tick_axis, scale=alt.Scale(domain=rge)),
-#         alt.Y("gender", title="", axis=tick_axis),
-#         color="gender:N",
-#     )
-#     .properties(title="")
-# )
-
-y_ticks = (
-    base.mark_tick(size=8, opacity=0.5)
-    .encode(
-        alt.X("gender", title="", axis=tick_axis),
-        alt.Y(ycol, title="", axis=tick_axis),
-        color="gender:N",
-    )
-    .properties(height=377, width=34, title="")
-)
-
-x_ticks = (
+x_density = (
     alt.Chart(df)
     .transform_fold([xcol], as_=["", "value"])
     .transform_density(
@@ -171,35 +167,13 @@ x_ticks = (
     )
     .mark_area(opacity=0.8)
     .encode(
-        alt.X("value:Q", title="", scale=alt.Scale(domain=rge)),
+        alt.X("value:Q", title="", scale=alt.Scale(domain=rge), axis=tick_axis),
         alt.Y("density:Q", stack="zero", axis=tick_axis, title=""),
         alt.Color("gender:N"),
+        tooltip=["gender", alt.X("value:Q")],
     )
     .properties(width=400, height=55)
 )
-
-# y_ticks = (
-#     alt.Chart(df)
-#     .transform_fold([ycol], as_=["", "value"])
-#     .transform_density(
-#         density="value",
-#         bandwidth=0.3,
-#         groupby=["gender"],
-#         extent=[0, 8],
-#         counts=True,
-#         steps=89,
-#     )
-#     .mark_area()
-#     .encode(
-#         alt.X("value:Q", axis=tick_axis, title=""),
-#         # alt.X("density:Q", stack="zero", axis=tick_axis, title=""),
-#         alt.Y("density:Q", stack="zero", axis=tick_axis, title=""),
-#         # alt.Y("value:Q", axis=tick_axis, title=""),
-#         alt.Color("gender:N"),
-#     )
-#     .properties(width=255, height=377)
-# )
-
 
 polynomial_fit = [
     base.transform_regression(
@@ -215,39 +189,24 @@ reg = (
     .mark_point()
     .encode(x=xcol, y=ycol)
     .transform_regression(xcol, ycol, method="poly", order=order)
-    .mark_line(color="black", size=2)
+    .mark_line(color="#5ec962", size=2)
 )
 
-# fig1 = alt.layer(base, *polynomial_fit)
 fig1 = reg + base
-# fig1 = fig1.properties(height=610).interactive().add_selection(brush)
 fig1 = fig1.properties(height=377).interactive()
-# fig2 = fig1 & bars
-
-# fig2 = yticks | (fig1 & x_ticks)
-fig2 = fig1 & x_ticks
+fig2 = fig1 & x_density
 fig2 = (
     fig2.configure_axis(labelFontSize=11, titleFontSize=15)
     .configure_title(fontSize=15)
     .configure_legend(titleFontSize=13, labelFontSize=13)
 )
 
-
-_, col2, _ = st.columns((0.1, 0.8, 0.1))
+_, col2, _ = st.columns((0.15, 0.8, 0.1))
 with col2:
     st.altair_chart(fig2, use_container_width=True)
 
 
-cor = pg.corr(df[xcol], df[ycol])
-if isinstance(cor["BF10"][0], str):
-    cor["BF10"] = "> 1000"
-if cor["p-val"][0] < 0.001:
-    cor["p-val"] = "< 0.001"
-
 st.table(cor)
-
-
-# %%
 
 
 # %%
