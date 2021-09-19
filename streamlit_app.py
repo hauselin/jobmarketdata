@@ -52,10 +52,10 @@ df = pd.read_csv(st.secrets["data"])
 df = df.drop(columns=["date", "permission"])
 
 cols = list(keys.keys())
-colnames = keys.values()
+colnames = list(keys.values())
 
-# lucky = st.sidebar.button(f"I'm feeling lucky", key="lucky")
-lucky = False
+lucky = st.sidebar.button(f"I'm feeling lucky", key="lucky")
+# lucky = False
 
 if lucky:
     cols2 = cols[:28]
@@ -67,9 +67,18 @@ if lucky:
     st.session_state["default_y"] = default_y
     st.session_state["default_x"] = default_x
 else:
-    default_x = cols.index("years_postdoc")
-    default_y = cols.index("n_offers_research")
+    try:
+        default_x = st.session_state["default_x"]
+        default_y = st.session_state["default_y"]
+    except:
+        default_x = cols.index("years_postdoc")
+        default_y = cols.index("n_offers_research")
 
+swap = st.sidebar.checkbox(f"Swap xy-axis variables", key="swap", value=False)
+if swap:
+    default_y, default_x = default_x, default_y
+
+st.sidebar.markdown("#### ")
 
 # %% sidebar
 
@@ -89,7 +98,7 @@ xmin, xmax = st.sidebar.select_slider(
 )
 df = df.loc[df[xcol] <= xmax].loc[df[xcol] >= xmin].reset_index(drop=True)
 
-st.sidebar.markdown("### ")
+st.sidebar.markdown("#### ")
 
 ycol = st.sidebar.selectbox("y-axis variable", colnames, index=default_y)
 ycol = list(keys.keys())[list(keys.values()).index(ycol)]
@@ -111,13 +120,14 @@ if xcol == ycol:
     st.warning("Select different x and y variables.")
     st.stop()
 
-
-st.sidebar.markdown("## ")
+st.sidebar.markdown("#### ")
 
 dfclean = df[[ycol, xcol]].dropna()
 n = dfclean.shape[0]
+
+degree = np.random.randint(1, 7, 1)[0] if lucky else 1
 order = st.sidebar.slider(
-    "Regression polynomial order", min_value=1, max_value=15, value=1
+    "Regression polynomial order", min_value=1, max_value=15, value=int(degree)
 )
 
 # %% regress and correlate
@@ -214,7 +224,14 @@ fig2 = (
 _, col2, _ = st.columns((0.15, 0.8, 0.1))
 with col2:
     st.altair_chart(fig2, use_container_width=True)
+    st.write("Hover over the data points for more info. You can also zoom/pan.")
 
 st.table(cor)
+
+# %%
+
+st.markdown(
+    "Data collected by [Gordon Pennycook](https://twitter.com/GordPennycook) & [Samuel Mehr](https://twitter.com/samuelmehr). App made by [Hause Lin](https://twitter.com/hauselin)."
+)
 
 # %%
