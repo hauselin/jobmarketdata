@@ -1,5 +1,7 @@
 # Job market data
 
+[![Streamlit App](https://share.streamlit.io/hauselin/jobmarketdata/main)](https://share.streamlit.io/hauselin/stats-app/main)
+
 Data collected by Gordon Pennycook and Samuel Merh.
 
 App made by Hause Lin.
