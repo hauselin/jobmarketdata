@@ -17,6 +17,7 @@ d2021[, N := 1:.N]
 
 dColumnNames <- bind_rows(d2020, d2021)%>%arrange(column)%>%data.table()
 dColumnNames[, .N, by = column][N == 1]
+
 dColumnNames[, newColumn := gsub(x = newColumn, pattern = "2019-2020", replacement = "XXXX")]
 dColumnNames[, newColumn := gsub(x = newColumn, pattern = "2018-2019", replacement = "XXXX")]
 dColumnNames[, newColumn := gsub(x = newColumn, pattern = "2018", replacement = "XXXX")]
