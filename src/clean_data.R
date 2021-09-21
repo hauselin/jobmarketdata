@@ -154,6 +154,10 @@ d0[ethnicity %in% c("iranian", "mena"), ethnicity := "Middle Eastern"]
 d0[grepl(pattern = 'nat', x = ethnicity), ethnicity]
 d0[, sort(unique(ethnicity))]
 
+# remove duplicattes
+d0 <- distinct(d0)
+d0%>%View()
+
 #datasummary_skim(d0)
 
 #fwrite(d0, "../data/clean/data_cleaned.csv")
