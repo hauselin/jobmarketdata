@@ -60,12 +60,20 @@ d0[age == 1985, age := 2020 - 1985]
 # years_graduate_student
 d0[, sort(unique(years_graduate_student))]
 
+# n_classes_taught
+d0[, sort(unique(n_classes_taught))]%>%sort()
+d0[n_classes_taught > 50, .(age, n_classes_taught, career_stage)]
+d0[n_classes_taught > 400, n_classes_taught := NA]
 
 # years_postdoc
 d0[, sort(unique(years_postdoc))]
 
 # n_first_author
 d0[, sort(unique(n_first_author))]
+
+# n_papers_published
+d0[, sort(unique(n_papers_published))]
+
 
 # permission
 d0[, sort(unique(permission))]
@@ -154,9 +162,113 @@ d0[ethnicity %in% c("iranian", "mena"), ethnicity := "Middle Eastern"]
 d0[grepl(pattern = 'nat', x = ethnicity), ethnicity]
 d0[, sort(unique(ethnicity))]
 
+# n_months_family_leave
+d0[, unique(n_months_family_leave)]%>%sort()
+d0[n_months_family_leave > 30, .(age,career_stage, n_months_family_leave)]
+
+# n_apply_tenure
+d0[, unique(n_apply_tenure)]%>%sort()
+
+# n_interview_research_initial
+d0[, unique(n_interview_research_initial)]%>%sort()
+
+# n_interview_research_final
+d0[, unique(n_interview_research_final)]%>%sort()
+
+# n_offers_research
+d0[, unique(n_offers_research)]%>%sort()
+
+# n_apply_teaching
+d0[, unique(n_apply_teaching)]%>%sort()
+
+# n_interview_teaching_initial
+d0[, unique(n_interview_teaching_initial)]%>%sort()
+
+# n_interview_teaching_final
+d0[, unique(n_interview_teaching_final)]%>%sort()
+
+# n_offers_teaching
+d0[, unique(n_offers_teaching)]%>%sort()
+
+# n_apply_nontenure
+d0[, unique(n_apply_nontenure)]%>%sort()
+
+# n_interviews_nontenure_intial
+d0[, unique(n_interviews_nontenure_intial)]%>%sort()
+
+# n_interviews_nontenure_final
+d0[, unique(n_interviews_nontenure_final)]%>%sort()
+
+# n_offers_nontenure
+d0[, unique(n_offers_nontenure)]%>%sort()
+
+# n_industry_apply
+d0[, unique(n_industry_apply)]%>%sort()
+d0[n_industry_apply > 100, .(age, career_stage, n_industry_apply)]
+
+# n_interviews_industry_initial
+d0[, unique(n_interviews_industry_initial)]%>%sort()
+
+# n_interviews_industry_final
+d0[, unique(n_interviews_industry_final)]%>%sort()
+
+#  n_offers_industry
+d0[, unique( n_offers_industry)]%>%sort()
+
+#  covid_job_search_impact
+d0[, unique( covid_job_search_impact)]%>%sort()
+
+#  covid_job_search_impact_how
+d0[, unique( covid_job_search_impact_how)]%>%sort()
+
+#  job_market_comments
+d0[, unique( job_market_comments)]%>%sort()
+
+# research_area
+d0[, unique( research_area)]%>%sort()
+ra <- d0[, research_area]
+ra <- paste(ra, collapse = ";")
+ra <- str_split(string = ra, pattern = ";")
+ra <- ra[[1]]
+ra <- data.table(table(ra))%>%arrange(N, ra)
+ra[, ra_recoded := ""]
+ra[ra == "cognitive modeling", ra_recoded := "Other"]
+ra[grepl(pattern = 'commun', x = ra, ignore.case = T), ra_recoded := "Community"]
+ra[grepl(pattern = 'compa', x = ra, ignore.case = T), ra_recoded := "Comparative"]
+ra[ra %in% c('Consumer behavior', "computational social science", "sociology", "Labels are bad for science."), ra_recoded := "Other"]
+ra[grepl(pattern = "foren", x = ra, ignore.case = T), ra_recoded  := "Forensic"]
+ra[grepl(pattern = 'clin', x = ra, ignore.case = T) & !ra_recoded %in% c("Forensic"), ra_recoded := "Clinical & Counselling"]
+ra[grepl(pattern = 'coun', x = ra, ignore.case = T), ra_recoded := "Clinical & Counselling"]
+ra[grepl(pattern = 'health', x = ra, ignore.case = T) & ra_recoded != "Clinical & Counselling", ra_recoded := "Health"]
+ra[grepl(pattern = 'soc', x = ra, ignore.case = T) & ra_recoded == "", ra_recoded := "Social & Personality"]
+ra[grepl(pattern = "Schoo", x = ra, ignore.case = T), ra_recoded := "Education"]
+ra[grepl(pattern = "cog", x = ra, ignore.case = T) & ra_recoded != "Other", ra_recoded := "Cognitive"]
+ra[N < 4 & ra_recoded == "", ra_recoded := "Other"]
+ra[ra_recoded == "", ra_recoded := ra]
+ra[, ]%>%arrange(N, ra)
+
+unique_ras <- ra[, ra]
+i <- 1
+for (i in 1:nrow(d0)) {
+   x <- d0[i, research_area]
+   ras <- str_split(string = x, pattern = ";")[[1]]
+   mask <- unique_ras %in% ras
+   recoded <- paste0(ra[mask, ra_recoded], collapse= ",")
+   print(recoded)
+   d0[i, research_area := recoded]
+}
+
+d0[, unique(research_area)]
+
+glimpse(d0)
+
+# home_institution
+
+
+
+
 # remove duplicattes
 d0 <- distinct(d0)
-d0%>%View()
 
 #datasummary_skim(d0)
 
