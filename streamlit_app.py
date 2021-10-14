@@ -48,13 +48,16 @@ st.set_page_config(
 
 # %% prepare data
 
-df = pd.read_csv(st.secrets["data"])
+try:
+    df = pd.read_csv(st.secrets["data"])
+except:
+    df = pd.read_csv("data/clean/data_merged.csv")
 df = df.drop(columns=["date", "permission"])
 
 cols = list(keys.keys())
 colnames = list(keys.values())
 
-lucky = st.sidebar.button(f"I'm feeling lucky", key="lucky")
+lucky = st.sidebar.button("I'm feeling lucky", key="lucky")
 
 if lucky:
     cols2 = cols[:28]
