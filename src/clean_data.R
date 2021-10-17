@@ -1,5 +1,5 @@
 rm(list = ls())
-library(data.table); library(tidyverse); library(modelsummary)
+library(data.table); library(tidyverse); library(modelsummary); library(tools)
 
 d0 <- fread("../data/clean/data_merged.csv")
 d0
@@ -303,21 +303,31 @@ hpj <- str_squish(hpj)%>%unique()
 
 #fwrite(x = data.table(hpj), file = "../data/clean/hpj.csv")
 hpj <- fread("../data/clean/hpj2.csv")
+hpj
+hpj[, hpj := gsub("(", "", hpj, fixed = TRUE)]
+hpj[, hpj := gsub(")", "", hpj, fixed = TRUE)]
 
-i <- 1
-for (i in 1:nrow(hpj)) {
-   print(i)
-   print(hpj[i, hpj])
-   #d0[, str_replace(string = highest_profile_journal, pattern = hpj[i, hpj], replacement = hpj[i, hpj2])]
-   # d0[, highest_profile_journal := gsub(pattern = hpj[i, hpj], replacement = hpj[i, hpj2], x = highest_profile_journal, fixed = TRUE) ]
+d0[, highest_profile_journal := gsub("(", "", highest_profile_journal, fixed = TRUE)]
+d0[, highest_profile_journal := gsub(")", "", highest_profile_journal, fixed = TRUE)]
+d0[, highest_profile_journal := gsub("@ ", "@", highest_profile_journal, fixed = TRUE)]
+
+for (i in 1:nrow(d0)) {
+   journals <- d0[i, highest_profile_journal]
+   journals <- str_split(journals, '@')[[1]]
+   new <- hpj[hpj %in% journals, hpj2]
+   new <- toTitleCase(new)
+   new <- new[new != ""]
+   new <- paste0(new, collapse = ",")
+   # if (length(new) != length(journals)) {
+   #    print(i)
+   #    print(sort(journals))
+   #    print(" ")
+   #    print(sort(new))
+   #    break
+   # }
+   d0[i, highest_profile_journal := new]
 }
-
-
-
 d0[, highest_profile_journal]
-hpj[i]
-
-
 
 # n_months_family_leave
 d0[, unique(n_months_family_leave)]%>%sort()
@@ -381,18 +391,11 @@ d0[, unique( covid_job_search_impact_how)]%>%sort()
 #  job_market_comments
 d0[, unique( job_market_comments)]%>%sort()
 
-
-
 glimpse(d0)
-
-# home_institution
-
-
-
 
 # remove duplicattes
 d0 <- distinct(d0)
 
-#datasummary_skim(d0)
+# datasummary_skim(d0)
 
-#fwrite(d0, "../data/clean/data_cleaned.csv")
+fwrite(d0, "../data/clean/data_cleaned.csv")
