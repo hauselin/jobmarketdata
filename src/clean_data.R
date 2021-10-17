@@ -317,7 +317,17 @@ for (i in 1:nrow(d0)) {
    new <- hpj[hpj %in% journals, hpj2]
    new <- toTitleCase(new)
    new <- new[new != ""]
+   new <- gsub("Pnas", "PNAS", new)
+   new <- gsub("Elife", "eLife", new)
+   new <- gsub("Royal Society b", "Royal Society B", new)
+   new <- gsub("Jama", "JAMA", new)
+   new <- gsub("Npj", "NPJ", new)
+   new <- gsub("Bmj", "BMF", new)
+   new <- gsub("Ieee", "IEEE", new)
+   new <- gsub("Neuroimage", "NeuroImage", new)
+   new <- gsub("Bp:cnni", "BP:CNNI", new)
    new <- paste0(new, collapse = ",")
+   
    # if (length(new) != length(journals)) {
    #    print(i)
    #    print(sort(journals))
