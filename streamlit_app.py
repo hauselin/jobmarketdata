@@ -49,9 +49,10 @@ st.set_page_config(
 # %% prepare data
 
 try:
-    df = pd.read_csv(st.secrets["data"])
+    df = pd.read_csv("data/clean/data_cleaned.csv")
 except:
-    df = pd.read_csv("data/clean/data_merged.csv")
+    df = pd.read_csv(st.secrets["data"])
+
 df = df.drop(columns=["date", "permission"])
 
 cols = list(keys.keys())
