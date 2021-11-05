@@ -261,7 +261,9 @@ st.table(cor)
 # %%
 
 st.markdown(
-    "Data collected by [Gordon Pennycook](https://twitter.com/GordPennycook) & [Samuel Mehr](https://twitter.com/samuelmehr). App made by [Hause Lin](https://twitter.com/hauselin)."
+    "Data collected by [Gordon Pennycook](https://twitter.com/GordPennycook) & [Samuel Mehr](https://twitter.com/samuelmehr). App made by [Hause Lin](https://twitter.com/hauselin). Contributors: [Lexi Decker](https://twitter.com/lexidecker3)."
 )
+
+st.markdown("Source code on [GitHub](https://github.com/hauselin/jobmarketdata).")
 
 # %%
