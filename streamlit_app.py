@@ -13,6 +13,8 @@ from sklearn.preprocessing import PolynomialFeatures
 
 import utils
 from utils import keys
+import requests
+import io
 
 pd.set_option(
     "display.max_rows",
@@ -51,7 +53,11 @@ st.set_page_config(
 try:
     df = pd.read_csv("data/clean/data_cleaned.csv")
 except:
-    df = pd.read_csv(st.secrets["data"])
+    github_session = requests.Session()
+    github_session.auth = (st.secrets["user"], st.secrets["token"])
+    url = st.secrets["url"]
+    download = github_session.get(url).content
+    df = pd.read_csv(io.StringIO(download.decode("utf-8")))
 
 df = df.drop(columns=["date", "permission"])
 
